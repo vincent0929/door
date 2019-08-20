@@ -6,6 +6,8 @@ import lombok.Getter;
 @Getter
 public enum BizErrorEnum implements BaseEnum<Integer> {
 
+    SYSTEM_ERROR(501, "系统内部异常"),
+
     // app相关
     APP_NOT_EXIST(1000, "app没有注册"),
     APP_NOT_ENABLE(1001, "app未启用"),
