@@ -15,12 +15,12 @@ public class SwaggerConfiguration {
     @Bean
     public Docket createRestApi() {
         ApiInfo apiInfo = new ApiInfoBuilder()
-                .title("Crawler API")
+                .title("Door API")
                 .build();
         return new Docket(DocumentationType.SWAGGER_2)
                 .apiInfo(apiInfo)
                 .select()
-                .apis(RequestHandlerSelectors.basePackage("so.dian.crawler.com.vc.door.client.web"))
+                .apis(RequestHandlerSelectors.basePackage("com.vc.door.web"))
                 .paths(PathSelectors.any())
                 .build();
     }

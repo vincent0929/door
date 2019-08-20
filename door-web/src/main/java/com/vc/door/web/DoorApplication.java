@@ -13,7 +13,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @SpringBootApplication
 @ComponentScan("com.vc.door")
 @MapperScan("com.vc.door.core.dao")
-@ServletComponentScan("com.vc.door.com.vc.door.client.web")
+@ServletComponentScan("com.vc.door.web")
 @EnableSwagger2
 @EnableCaching
 public class DoorApplication {
