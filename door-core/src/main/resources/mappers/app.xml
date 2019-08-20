@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vc.door.core.dao.AppDAO">
+
+    <sql id="baseColumn">
+        select id, name, app_key, app_secret, logout_url, status from app
+    </sql>
+
+    <insert id="add" parameterType="app">
+        insert into app(name, app_key, app_secret, logout_url, status)
+        values (#{name}, #{appKey}, #{appSecret}, #{logoutUrl}, 1)
+    </insert>
+
+    <select id="getByName" resultType="app">
+        <include refid="baseColumn"/>
+        where name = #{name}
+    </select>
+
+</mapper>

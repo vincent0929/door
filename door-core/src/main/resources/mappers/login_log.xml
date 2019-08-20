@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vc.door.core.dao.LoginLogDAO">
+
+    <insert id="add" parameterType="loginLog">
+        insert into login_log(user_id, action_type, app_id, ip, info)
+        values (#{userId}, #{actionType}, #{appId}, #{ip}, #{info})
+    </insert>
+
+</mapper>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vc.door.core.dao.AccountDAO">
+
+    <sql id="baseColumn">
+        select id, user_id, identity_type, identifier, credential, verified from account
+    </sql>
+
+    <insert id="add" parameterType="account">
+        insert into account(user_id, identity_type, identifier, credential, verified, create_time, update_time, deleted)
+        values (#{userId}, #{identityType}, #{identifier}, #{credential}, 0, now(), now(), 0)
+    </insert>
+
+    <select id="delete" resultType="java.lang.Long">
+        update account set deleted = 1, update_time = now() where id = #{id}
+    </select>
+
+    <select id="deleteByUserId" resultType="java.lang.Long">
+        update account set deleted = 1, update_time = now() where user_id = #{userId}
+    </select>
+
+    <select id="get" resultType="account">
+        <include refid="baseColumn"/>
+        where id = #{id} and deleted = 0
+    </select>
+
+    <select id="getByIdentifier" resultType="account">
+        <include refid="baseColumn"/>
+        where identifier = #{identifier} and credential = #{credential}
+        and identity_type = #{identityType} and deleted = 0 order by id asc limit 1
+    </select>
+
+    <select id="getByUserId" resultType="account">
+        <include refid="baseColumn"/>
+        where user_id = #{userId} and deleted = 0
+    </select>
+
+    <select id="verifySuccess" resultType="java.lang.Long">
+        update account set verified = 1, update_time = now() where id = #{id} and verified = 0
+    </select>
+
+</mapper>

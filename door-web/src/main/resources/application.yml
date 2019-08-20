@@ -1,0 +1,59 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: door
+  profiles:
+    active: '@env@'
+  datasource:
+    url: jdbc:mysql://localhost:3306/door?useSSL=false&serverTimezone=Asia/Shanghai
+    username: vincent
+    password: vincent
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      filters: stat
+      max-active: 20
+      initial-size: 1
+      max-wait: 60000
+      min-idle: 1
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      test-on-borrow: true
+      test-on-return: false
+      test-while-idle: false
+      async-init: true
+      pool-prepared-statements: true
+      max-open-prepared-statements: 20
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    joda-date-time-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: non_null
+  redis:
+    host: 127.0.0.1
+    database: 0
+    port: 6379
+    timeout: 5000
+    jedis:
+      pool:
+        max-active: 100
+
+mybatis:
+  type-aliases-package: com.vc.door.core.entity
+  mapper-locations: classpath:mappers/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+log:
+  level: DEBUG
+  path: ${user.home}/logs/door
+
+door:
+  login:
+    home: /account
+    url:  /static/login.html
+
