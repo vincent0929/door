@@ -16,7 +16,7 @@ public class SsoLoginController {
     private SsoLoginService loginService;
 
     @RequestMapping("/logout")
-    public ResultDTO<Boolean> logout(HttpServletRequest request, HttpServletResponse response) {
+    public ResultDTO logout(HttpServletRequest request, HttpServletResponse response) {
         return loginService.logout(request, response);
     }
 }
