@@ -19,7 +19,7 @@ import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
+@Service
 public class SsoLoginServiceImpl implements SsoLoginService {
 
     @Autowired
@@ -51,7 +51,7 @@ public class SsoLoginServiceImpl implements SsoLoginService {
 
     @Override
     public boolean validToken(String token) {
-        String value = (String) redisTemplate.opsForValue().get(SsoConstant.COOKIE_TOKEN + ":" + token);
+        String value = redisTemplate.opsForValue().get(SsoConstant.COOKIE_TOKEN + ":" + token);
         return StringUtils.isNotBlank(value);
     }
 
