@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 @RestController
 public class SsoLoginController {
@@ -16,7 +17,7 @@ public class SsoLoginController {
     private SsoLoginService loginService;
 
     @RequestMapping("/logout")
-    public ResultDTO logout(HttpServletRequest request, HttpServletResponse response) {
-        return loginService.logout(request, response);
+    public void logout(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        loginService.logout(request, response);
     }
 }

@@ -1,15 +1,17 @@
 package com.vc.door.core.service;
 
 import com.vc.door.core.constant.IdentityTypeEnum;
-import io.github.vincent0929.common.dto.ResultDTO;
+import com.vc.door.core.entity.UserDO;
 
 public interface LoginService {
 
     boolean validToken(String token);
 
-    Long validTicket(String ticket, String app, String appToken, String appKey, String appSecret);
+    Long validTicket(String ticket, String appName, String appKey, String appSecret);
 
     String login(String identifier, String credential, IdentityTypeEnum identityType);
+
+    UserDO getUser(String token);
 
     String grantTicket(String token);
 

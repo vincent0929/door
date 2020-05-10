@@ -6,6 +6,4 @@ import lombok.Data;
 public class TicketValidResponse {
 
     private Long userId;
-
-    private String token;
 }

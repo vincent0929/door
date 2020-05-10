@@ -14,7 +14,11 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class SsoLoginInterceptor implements HandlerInterceptor {
@@ -25,41 +29,53 @@ public class SsoLoginInterceptor implements HandlerInterceptor {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    @Value("${door.login.url}")
-    private String loginUrl;
+    @Value("${door.path.host}")
+    private String host;
+
+    @Value("${door.path.login}")
+    private String loginPath;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        Map<String, String[]> parameterMap = request.getParameterMap();
+        String requestUrl = request.getRequestURL().toString();
+        if (!parameterMap.isEmpty()) {
+            requestUrl += "?" + parameterMap.entrySet().stream()
+                    .map(entry -> entry.getKey() + "=" + (entry.getValue() != null ? entry.getValue()[0] : ""))
+                    .collect(Collectors.joining("&"));
+        }
+
         Cookie[] cookies = request.getCookies();
         String token = null;
+        String ticket = null;
         if (cookies != null && cookies.length > 0) {
             for (Cookie cookie : cookies) {
                 if (SsoConstant.COOKIE_TOKEN.equals(cookie.getName())) {
                     token = cookie.getValue();
+                } else if (SsoConstant.TICKET.equals(cookie.getName())) {
+                    ticket = cookie.getValue();
                 }
             }
         }
-        boolean valid = false;
         if (token != null && token.length() > 0) {
-            valid = loginService.validToken(token);
+            boolean valid = loginService.validToken(token);
+            if (valid) {
+                return true;
+            }
         } else {
-            String ticket = request.getParameter(SsoConstant.TICKET);
             if (ticket != null && ticket.length() > 0) {
-                ResultDTO resultDTO = loginService.validTicket(ticket);
+                ResultDTO<TicketValidResponse> resultDTO = loginService.validTicket(ticket);
                 if (resultDTO.isSuccess()) {
-                    TicketValidResponse validResponse = (TicketValidResponse) resultDTO.getData();
-                    String url = request.getRequestURI();
-                    redisTemplate.opsForValue().set(SsoConstant.COOKIE_TOKEN + ":" + validResponse.getToken(), String.valueOf(validResponse.getUserId()), Duration.ofDays(1));
-                    response.addCookie(new Cookie(SsoConstant.COOKIE_TOKEN, validResponse.getToken()));
-                    response.sendRedirect(url);
+                    TicketValidResponse validResponse = resultDTO.getData();
+                    token = Strings.uuid();
+                    redisTemplate.opsForValue().set(SsoConstant.COOKIE_TOKEN + ":" + token, String.valueOf(validResponse.getUserId()), Duration.ofDays(1));
+                    response.addCookie(new Cookie(SsoConstant.COOKIE_TOKEN, token));
+                    response.sendRedirect(requestUrl);
                     return false;
                 }
             }
         }
-        if (valid) {
-            return true;
-        }
-        response.sendRedirect(loginUrl);
+        response.sendRedirect(host + loginPath + "?" +SsoConstant.CALLBACK + "=" + URLEncoder.encode(requestUrl, StandardCharsets.UTF_8.displayName()));
         return false;
     }
 }

@@ -54,6 +54,6 @@ log:
 
 door:
   login:
-    home: /account
-    url:  /static/login.html
+    index: /index
+    html:  /static/login.html
 

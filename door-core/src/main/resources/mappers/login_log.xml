@@ -3,8 +3,8 @@
 <mapper namespace="com.vc.door.core.dao.LoginLogDAO">
 
     <insert id="add" parameterType="loginLog">
-        insert into login_log(user_id, action_type, app_id, ip, info)
-        values (#{userId}, #{actionType}, #{appId}, #{ip}, #{info})
+        insert into login_log(id, user_id, action_type, app_id, ip, info, create_time, update_time, deleted)
+        values (#{userId}, #{actionType}, #{appId}, #{ip}, #{info}, now(), now(), 0)
     </insert>
 
 </mapper>

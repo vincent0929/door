@@ -1,9 +1,14 @@
 package com.vc.door.client;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@ComponentScan
-@Configuration
-public class DoorClientAutoConfiguration {
+@ComponentScan("com.vc.door.client")
+@ConditionalOnBean(DoorClientAutoConfiguration.DoorClientAutoConfigurationIndicator.class)
+public class DoorClientAutoConfiguration implements WebMvcConfigurer {
+
+    static class DoorClientAutoConfigurationIndicator {
+
+    }
 }

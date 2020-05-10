@@ -3,7 +3,7 @@
 <mapper namespace="com.vc.door.core.dao.AccountDAO">
 
     <sql id="baseColumn">
-        select id, user_id, identity_type, identifier, credential, verified from account
+        select id, user_id, identity_type, identifier, credential, verified, create_time, update_time, deleted from account
     </sql>
 
     <insert id="add" parameterType="account">
