@@ -12,6 +12,7 @@
         <module>door-web</module>
         <module>door-core</module>
         <module>door-client</module>
+        <module>door-test</module>
     </modules>
 
     <properties>
