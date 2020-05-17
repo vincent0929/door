@@ -13,5 +13,5 @@ public interface SsoLoginService {
 
     ResultDTO<TicketValidResponse> validTicket(String ticket);
 
-    void logout(HttpServletRequest request, HttpServletResponse response) throws IOException;
+    ResultDTO<Boolean> logout(HttpServletRequest request, HttpServletResponse response) throws IOException;
 }

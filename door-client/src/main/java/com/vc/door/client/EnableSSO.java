@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@Import(DoorClientAutoConfiguration.DoorClientAutoConfigurationIndicator.class)
+@Import(DoorClientConfiguration.class)
 public @interface EnableSSO {
 
 }

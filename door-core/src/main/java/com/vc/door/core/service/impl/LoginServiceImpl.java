@@ -1,5 +1,7 @@
 package com.vc.door.core.service.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.vc.door.core.constant.AppStatusEnum;
 import com.vc.door.core.constant.BizErrorEnum;
 import com.vc.door.core.constant.DoorConstants;
@@ -9,15 +11,22 @@ import com.vc.door.core.entity.AppDO;
 import com.vc.door.core.entity.UserDO;
 import com.vc.door.core.manager.AccountManager;
 import com.vc.door.core.manager.AppManager;
-import com.vc.door.core.manager.LoginLogManager;
 import com.vc.door.core.manager.UserManager;
 import com.vc.door.core.service.LogService;
 import com.vc.door.core.service.LoginService;
+import io.github.vincent0929.common.dto.ResultDTO;
 import io.github.vincent0929.common.util.BizAssert;
 import io.github.vincent0929.common.util.Strings;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -30,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.vc.door.core.constant.BizErrorEnum.USER_NOT_LOGIN;
 
@@ -62,7 +72,7 @@ public class LoginServiceImpl implements LoginService {
     }
 
     @Override
-    public Long validTicket(String ticket, String appName, String appKey, String appSecret) {
+    public Long validTicket(String ticket, String appName, String appToken, String appKey, String appSecret) {
         validApp(appName, appKey, appSecret);
 
         BizAssert.notBlank(ticket, BizErrorEnum.TICKET_ERROR);
@@ -71,6 +81,8 @@ public class LoginServiceImpl implements LoginService {
         redisTemplate.delete(DoorConstants.REDIS_PREFIX_TICKET + ticket);
         String userId = redisTemplate.opsForValue().get(DoorConstants.REDIS_PREFIX_TOKEN + token);
         BizAssert.notBlank(userId, BizErrorEnum.TICKET_ERROR);
+        redisTemplate.opsForHash().put(DoorConstants.REDIS_PREFIX_ALL_APP_TOKEN + token, appName, appToken);
+        redisTemplate.opsForValue().set(DoorConstants.REDIS_PREFIX_APP_TOKEN + appName + DoorConstants.KEY_COLON + appToken, token);
         return Long.valueOf(userId);
     }
 
@@ -85,23 +97,25 @@ public class LoginServiceImpl implements LoginService {
     }
 
     @Override
-    public String login(String identifier, String credential, IdentityTypeEnum identityType) {
-        BizAssert.isTrue(StringUtils.isNotBlank(identifier) && StringUtils.isNotBlank(credential),
-                BizErrorEnum.ACCOUNT_ERROR);
+    public ResultDTO<String> login(String identifier, String credential, IdentityTypeEnum identityType) {
+        if (StringUtils.isBlank(identifier) || StringUtils.isBlank(credential)) {
+            return ResultDTO.fail(BizErrorEnum.ACCOUNT_ERROR.getCode(), BizErrorEnum.ACCOUNT_ERROR.getDesc());
+        }
         String encryptCredential = DigestUtils.md5DigestAsHex(credential.getBytes(StandardCharsets.UTF_8));
         AccountDO accountDO = accountManager.getByIdentifier(identifier, encryptCredential, identityType);
-        BizAssert.notNull(accountDO, BizErrorEnum.ACCOUNT_ERROR);
+        if (accountDO == null) {
+            return ResultDTO.fail(BizErrorEnum.ACCOUNT_ERROR.getCode(), BizErrorEnum.ACCOUNT_ERROR.getDesc());
+        }
         String token = Strings.uuid();
         redisTemplate.opsForValue().set(DoorConstants.REDIS_PREFIX_TOKEN + token, String.valueOf(accountDO.getUserId()), Duration.ofDays(1));
-        return token;
+        return ResultDTO.success(token);
     }
 
     @Override
     public UserDO getUser(String token) {
-        String userIdStr = redisTemplate.opsForValue().get(DoorConstants.REDIS_PREFIX_TOKEN + token);
-        BizAssert.notBlank(userIdStr, USER_NOT_LOGIN);
-        Long userId = Long.valueOf(userIdStr);
-        return userManager.get(userId);
+        String userId = redisTemplate.opsForValue().get(DoorConstants.REDIS_PREFIX_TOKEN + token);
+        BizAssert.notBlank(userId, USER_NOT_LOGIN);
+        return userManager.get(Long.valueOf(userId));
     }
 
     @Override
@@ -112,55 +126,65 @@ public class LoginServiceImpl implements LoginService {
     }
 
     @Override
-    public void logoutByToken(String token) {
+    public void logoutByToken(String logoutAppName, String token) {
         String userId = redisTemplate.opsForValue().get(DoorConstants.REDIS_PREFIX_TOKEN + token);
-        BizAssert.notBlank(userId, USER_NOT_LOGIN);
-        logout(token);
-    }
-
-    @Override
-    public void logoutByAppToken(String appToken) {
-        String token = redisTemplate.opsForValue().get(DoorConstants.REDIS_PREFIX_APP_TOKEN + appToken);
-        BizAssert.notBlank(token, USER_NOT_LOGIN);
-        String userId = redisTemplate.opsForValue().get(DoorConstants.REDIS_PREFIX_TOKEN + token);
-        BizAssert.notBlank(userId, USER_NOT_LOGIN);
+        if (StringUtils.isBlank(userId)) {
+            return;
+        }
         Map<Object, Object> appTokenMap = redisTemplate.opsForHash().entries(DoorConstants.REDIS_PREFIX_ALL_APP_TOKEN + token);
-        BizAssert.isTrue(MapUtils.isNotEmpty(appTokenMap) && appTokenMap.containsValue(appToken),
-                USER_NOT_LOGIN);
+        BizAssert.isTrue(MapUtils.isNotEmpty(appTokenMap) && appTokenMap.containsKey(logoutAppName), USER_NOT_LOGIN);
 
-        Map<String, String> otherAppTokenMap = new HashMap<>();
-        appTokenMap.forEach((app, t) -> {
-            if (t.equals(appToken)) {
+        redisTemplate.delete(DoorConstants.REDIS_PREFIX_ALL_APP_TOKEN + token);
+        redisTemplate.delete(DoorConstants.REDIS_PREFIX_TOKEN + token);
+
+        CountDownLatch countDownLatch = new CountDownLatch(appTokenMap.keySet().size());
+        appTokenMap.forEach((appName, appToken) -> CompletableFuture.runAsync(() -> {
+            AppDO appDO = appManager.getByName(String.valueOf(appName));
+            if (appDO == null) {
                 return;
             }
-            otherAppTokenMap.put(String.valueOf(app), String.valueOf(t));
-        });
-        if (MapUtils.isNotEmpty(otherAppTokenMap)) {
-            CountDownLatch countDownLatch = new CountDownLatch(otherAppTokenMap.keySet().size());
-            otherAppTokenMap.forEach((app, t) -> CompletableFuture.runAsync(() -> {
-                AppDO appDO = appManager.getByName(app);
-                if (appDO == null) {
+
+            if (!appName.equals(logoutAppName)) {
+                HttpGet get = new HttpGet(appDO.getLogoutUrl());
+                Map<String, String> cookieMap = new HashMap<>();
+                cookieMap.put(DoorConstants.COOKIE_APP_TOKEN, String.valueOf(appToken));
+                cookieMap.put(DoorConstants.COOKIE_TOKEN, token);
+                get.setHeader(DoorConstants.COOKIE, cookieMap.entrySet().stream().map(entry -> entry.getKey() + "=" + entry.getValue())
+                        .collect(Collectors.joining(";")));
+                try (CloseableHttpClient httpClient = HttpClients.createDefault();
+                     CloseableHttpResponse httpResponse = httpClient.execute(get)) {
+                    if (HttpStatus.SC_OK != httpResponse.getStatusLine().getStatusCode()) {
+                        log.error("调用登出接口异常,token={}", token);
+                        return;
+                    }
+                    HttpEntity entity = httpResponse.getEntity();
+                    String result = EntityUtils.toString(entity);
+                    EntityUtils.consume(entity);
+                    if (result == null || result.isEmpty()) {
+                        log.error("调用登出接口异常,token={}", token);
+                        return;
+                    }
+                    ResultDTO<Boolean> resultDTO = JSON.parseObject(result, new TypeReference<ResultDTO<Boolean>>() {
+                    });
+                    if (!resultDTO.isSuccess() || !Boolean.TRUE.equals(resultDTO.getData())) {
+                        log.error("调用登出接口失败,token={}", token);
+                        return;
+                    }
+                } catch (Exception e) {
+                    log.error("登出异常,token=" + token, e);
                     return;
                 }
-
-                String logoutUrl = appDO.getLogoutUrl();
-
-            }));
-            try {
-                boolean timeout = countDownLatch.await(1, TimeUnit.MINUTES);
-                if (!timeout) {
-                    log.error("登出所有业务系统超时,token={}", token);
-                    return;
-                }
-            } catch (InterruptedException e) {
-                log.error("登出所有业务系统被中断,token=" + token, e);
             }
-        }
-        logout(token);
-    }
 
-    private void logout(String token) {
-        redisTemplate.delete(DoorConstants.REDIS_PREFIX_APP_TOKEN + token);
-        redisTemplate.delete(DoorConstants.REDIS_PREFIX_TOKEN + token);
+            redisTemplate.delete(DoorConstants.REDIS_PREFIX_APP_TOKEN + appName + DoorConstants.KEY_COLON + appToken);
+        }));
+        try {
+            boolean timeout = countDownLatch.await(1, TimeUnit.MINUTES);
+            if (!timeout) {
+                log.error("登出所有业务系统超时,token={}", token);
+            }
+        } catch (InterruptedException e) {
+            log.error("登出所有业务系统被中断,token=" + token, e);
+        }
     }
 }

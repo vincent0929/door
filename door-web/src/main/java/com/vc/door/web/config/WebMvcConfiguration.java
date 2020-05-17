@@ -15,7 +15,7 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(loginInterceptor).excludePathPatterns("/static/**", "/dologin", "/valid", "/error");
+        registry.addInterceptor(loginInterceptor).excludePathPatterns("/static/**", "/dologin", "/logout", "/valid", "/error");
     }
 
     @Override
