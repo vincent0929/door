@@ -4,7 +4,7 @@ import com.vc.door.client.constant.SsoConstant;
 import com.vc.door.client.dto.TicketValidResponse;
 import com.vc.door.client.service.SsoLoginService;
 import io.github.vincent0929.common.dto.ResultDTO;
-import io.github.vincent0929.common.util.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -46,36 +46,39 @@ public class SsoLoginInterceptor implements HandlerInterceptor {
         }
 
         Cookie[] cookies = request.getCookies();
-        String token = null;
-        String ticket = null;
+        Cookie tokenCookie = null;
+        Cookie ticketCookie = null;
         if (cookies != null && cookies.length > 0) {
             for (Cookie cookie : cookies) {
                 if (SsoConstant.COOKIE_TOKEN.equals(cookie.getName())) {
-                    token = cookie.getValue();
+                    tokenCookie = cookie;
                 } else if (SsoConstant.TICKET.equals(cookie.getName())) {
-                    ticket = cookie.getValue();
+                    ticketCookie = cookie;
                 }
             }
         }
-        if (token != null && token.length() > 0) {
-            boolean valid = loginService.validToken(token);
+        if (tokenCookie != null && StringUtils.isNotBlank(tokenCookie.getValue())) {
+            boolean valid = loginService.validToken(tokenCookie.getValue());
             if (valid) {
                 return true;
             }
         } else {
-            if (ticket != null && ticket.length() > 0) {
-                ResultDTO<TicketValidResponse> resultDTO = loginService.validTicket(ticket);
+            if (ticketCookie != null && StringUtils.isNotBlank(ticketCookie.getValue())) {
+                ResultDTO<TicketValidResponse> resultDTO = loginService.validTicket(ticketCookie.getValue());
+                ticketCookie.setValue(null);
+                ticketCookie.setMaxAge(0);
+                response.addCookie(ticketCookie);
                 if (resultDTO.isSuccess()) {
                     TicketValidResponse validResponse = resultDTO.getData();
-                    token = Strings.uuid();
-                    redisTemplate.opsForValue().set(SsoConstant.COOKIE_TOKEN + ":" + token, String.valueOf(validResponse.getUserId()), Duration.ofDays(1));
-                    response.addCookie(new Cookie(SsoConstant.COOKIE_TOKEN, token));
+                    redisTemplate.opsForValue().set(SsoConstant.COOKIE_TOKEN + ":" + validResponse.getToken(),
+                            String.valueOf(validResponse.getUserId()), Duration.ofDays(1));
+                    response.addCookie(new Cookie(SsoConstant.COOKIE_TOKEN, validResponse.getToken()));
                     response.sendRedirect(requestUrl);
                     return false;
                 }
             }
         }
-        response.sendRedirect(host + loginPath + "?" +SsoConstant.CALLBACK + "=" + URLEncoder.encode(requestUrl, StandardCharsets.UTF_8.displayName()));
+        response.sendRedirect(host + loginPath + "?" + SsoConstant.CALLBACK + "=" + URLEncoder.encode(requestUrl, StandardCharsets.UTF_8.displayName()));
         return false;
     }
 }

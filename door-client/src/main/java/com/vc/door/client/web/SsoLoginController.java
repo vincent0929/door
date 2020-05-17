@@ -17,7 +17,7 @@ public class SsoLoginController {
     private SsoLoginService loginService;
 
     @RequestMapping("/logout")
-    public void logout(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        loginService.logout(request, response);
+    public ResultDTO<Boolean> logout(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        return loginService.logout(request, response);
     }
 }

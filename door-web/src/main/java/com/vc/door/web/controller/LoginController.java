@@ -5,7 +5,6 @@ import com.vc.door.core.constant.BizErrorEnum;
 import com.vc.door.core.constant.DoorConstants;
 import com.vc.door.core.constant.IdentityTypeEnum;
 import com.vc.door.core.entity.UserDO;
-import com.vc.door.core.service.LogService;
 import com.vc.door.core.service.LoginService;
 import io.github.vincent0929.common.constant.BaseEnum;
 import io.github.vincent0929.common.dto.ResultDTO;
@@ -38,49 +37,47 @@ public class LoginController {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
-    private LogService logService;
-
     @Value("${door.login.index}")
     private String index;
 
-    @Value("${door.login.html}")
-    private String loginHtml;
-
     @GetMapping("/valid")
-    public ResultDTO<Long> valid(@RequestParam("ticket") String ticket, @RequestParam("appName") String appName,
-                                 @RequestParam("appKey") String appKey, @RequestParam("appSecret") String appSecret) {
-        return ResultDTO.success(loginService.validTicket(ticket, appName, appKey, appSecret));
+    public ResultDTO<Long> valid(@RequestParam("ticket") String ticket, @RequestParam("appToken") String appToken,
+                                 @RequestParam("appName") String appName, @RequestParam("appKey") String appKey,
+                                 @RequestParam("appSecret") String appSecret) {
+        return ResultDTO.success(loginService.validTicket(ticket, appName, appToken, appKey, appSecret));
     }
 
-    @PostMapping("/dologin")
+    @RequestMapping("/dologin")
     public void doLogin(@RequestParam("identifier") String identifier,
-                      @RequestParam("credential") String credential,
-                      @RequestParam(value = "identityType", defaultValue = "1") Integer identityType,
-                      @RequestParam("callback") String callback,
-                      HttpServletResponse response) throws IOException {
+                        @RequestParam("credential") String credential,
+                        @RequestParam(value = "identityType", defaultValue = "1") Integer identityType,
+                        @RequestParam("callback") String callback,
+                        HttpServletResponse response) throws IOException {
         IdentityTypeEnum identityTypeEnum = BaseEnum.valueOf(IdentityTypeEnum.class, identityType);
-        String token = loginService.login(identifier, credential, identityTypeEnum);
-        response.addCookie(new Cookie(COOKIE_TOKEN, token));
-        if (StringUtils.isNotBlank(callback)) {
-            String ticket = loginService.grantTicket(token);
-            response.addCookie(new Cookie(DoorConstants.TICKET, ticket));
-            response.sendRedirect(URLDecoder.decode(callback, StandardCharsets.UTF_8.displayName()));
-        } else {
-            response.sendRedirect(index);
+        ResultDTO<String> tokenResult = loginService.login(identifier, credential, identityTypeEnum);
+        if (!tokenResult.isSuccess()) {
+            ServletOutputStream outputStream = response.getOutputStream();
+            outputStream.write(objectMapper.writeValueAsString(tokenResult).getBytes(StandardCharsets.UTF_8));
+            outputStream.flush();
+            return;
         }
-        ServletOutputStream outputStream = response.getOutputStream();
-        outputStream.write(objectMapper.writeValueAsString(ResultDTO.success(token)).getBytes(StandardCharsets.UTF_8));
-        outputStream.flush();
+
+        String token = tokenResult.getData();
+        response.addCookie(new Cookie(COOKIE_TOKEN, token));
+        String ticket = loginService.grantTicket(token);
+        response.addCookie(new Cookie(DoorConstants.TICKET, ticket));
+        if (callback == null || callback.isEmpty()) {
+            response.sendRedirect(index);
+        } else {
+            response.sendRedirect(URLDecoder.decode(callback, StandardCharsets.UTF_8.displayName()));
+        }
     }
 
     @GetMapping("/logout")
-    public ResultDTO<Boolean> logout(@RequestParam("token") String token) {
+    public ResultDTO<Boolean> logout(@RequestParam("appName") String appName, @RequestParam("token") String token) {
         BizAssert.isTrue(StringUtils.isNotBlank(token), BizErrorEnum.USER_NOT_LOGIN);
-        if (StringUtils.isNotBlank(token)) {
-            loginService.logoutByToken(token);
-            return ResultDTO.success(true);
-        }
+        BizAssert.isTrue(StringUtils.isNotBlank(appName), BizErrorEnum.APP_NAME_NOT_BLANK);
+        loginService.logoutByToken(appName, token);
         return ResultDTO.success(true);
     }
 

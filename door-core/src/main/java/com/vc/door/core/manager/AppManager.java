@@ -19,7 +19,7 @@ public class AppManager {
         }
     }
 
-    @Cacheable(cacheNames = "app:getByName", key = "'app:'.concat(#name)")
+    //@Cacheable(cacheNames = "app:getByName", key = "'app:'.concat(#name)")
     public AppDO getByName(String name) {
         if (StringUtils.isBlank(name)) {
             return null;

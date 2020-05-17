@@ -8,6 +8,7 @@ public class SsoConstant {
 
     public static final String TOKEN = "token";
     public static final String APP_NAME = "appName";
+    public static final String APP_TOKEN = "appToken";
     public static final String APP_KEY = "appKey";
     public static final String APP_SECRET = "appSecret";
 }
