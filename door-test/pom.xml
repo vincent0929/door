@@ -10,6 +10,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>door-test</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>door-test2</module>
+        <module>door-test1</module>
+    </modules>
 
     <dependencies>
         <dependency>

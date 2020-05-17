@@ -1,0 +1,37 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: door-test2
+  profiles:
+    active: '@env@'
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    joda-date-time-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: non_null
+  redis:
+    host: 127.0.0.1
+    database: 0
+    port: 6379
+    timeout: 5000
+    jedis:
+      pool:
+        max-active: 100
+
+log:
+  level: DEBUG
+  path: ${user.home}/logs/door/door-test2
+
+door:
+  app:
+    name: door-test2
+    key: door-test2
+    secret: 123456
+  path:
+    host: http://localhost:8080
+    login: /login
+    valid: /valid
+    logout: /logout
